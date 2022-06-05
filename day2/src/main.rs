@@ -43,7 +43,6 @@ impl Command {
     }
 }
 
-// first star
 fn main() {
 
     let mut depth: i32 = 0;
