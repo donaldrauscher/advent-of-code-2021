@@ -20,13 +20,25 @@ impl Command {
         }
     }
 
-    fn process(&self, forward: &mut i32, depth: &mut i32) {
+    #[allow(dead_code)]
+    fn process_part1(&self, forward: &mut i32, depth: &mut i32) {
         if self.direction == "up" {
             *depth -= self.magnitude;
         } else if self.direction == "down" {
             *depth += self.magnitude;
         } else {
             *forward += self.magnitude;
+        }
+    }
+
+    fn process_part2(&self, forward: &mut i32, depth: &mut i32, aim: &mut i32) {
+        if self.direction == "up" {
+            *aim -= self.magnitude;
+        } else if self.direction == "down" {
+            *aim += self.magnitude;
+        } else {
+            *forward += self.magnitude;
+            *depth += *aim * self.magnitude;
         }
     }
 }
@@ -36,12 +48,14 @@ fn main() {
 
     let mut depth: i32 = 0;
     let mut forward: i32 = 0;
+    let mut aim: i32 = 0;
 
     let lines = read_lines("./input.txt");
     for line in lines {
         if let Ok(command) = line {
             let command = Command::parse(command);
-            command.process(&mut forward, &mut depth);
+            //command.process_part1(&mut forward, &mut depth);
+            command.process_part2(&mut forward, &mut depth, &mut aim);
         }
     }
 
