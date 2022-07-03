@@ -4,53 +4,46 @@ use std::path::Path;
 
 
 fn main() {
-
-    let mut diagnostics: Vec<i32> = vec![0; 12];
+    // convert reading to integer and record frequencies in vector
+    let univ = (u32::pow(2, 12) - 1).try_into().unwrap();
+    let mut readings: Vec<u32> = vec![0; univ];
 
     let lines = read_lines("./input.txt");
     for line in lines {
         if let Ok(reading) = line {
-            for (i, r) in reading.chars().enumerate() {
-                if r == '1' {
-                    diagnostics[i] += 1;
-                } else {
-                    diagnostics[i] -= 1;
+            let reading_int: usize = usize::from_str_radix(&reading, 2).unwrap();
+            readings[reading_int] += 1;
+        }
+    }
+
+    get_gamma_epsilon_rate(&readings);
+}
+
+fn get_gamma_epsilon_rate(readings: &Vec<u32>) {
+    let mut digits: Vec<u32> = vec![0; 12];
+    let mut num_readings: u32 = 0;
+
+    for (reading, count) in readings.iter().enumerate() {
+        if count > &0 {
+            num_readings += count;
+            for digit in 0..12 {
+                if (reading & (1 << digit)) > 0 {
+                    digits[digit] += count;
                 }
             }
         }
     }
 
-    diagnostics.reverse();
-
-    let gamma = get_gamma_rate(&diagnostics);
-    let epsilon = get_epsilon_rate(&diagnostics);
-
-    println!("Gamma rate: {}", gamma);
-    println!("Epsilon rate: {}", epsilon);
-    println!("Power consumption: {}", gamma * epsilon);
-
-}
-
-fn get_gamma_rate(diagnostics: &Vec<i32>) -> u32 {
-    let mut gamma: u32 = 0;
-    let base: u32 = 2;
-    for (i, d) in diagnostics.iter().enumerate() {
-        if d > &0 {
-            gamma += base.pow(i.try_into().unwrap());
+    let mut mode: u32 = 0;
+    for (i, &d) in digits.iter().enumerate() {
+        if d > (num_readings - d) {
+            mode += 1 << i
         }
     }
-    gamma
-}
 
-fn get_epsilon_rate(diagnostics: &Vec<i32>) -> u32 {
-    let mut epsilon: u32 = 0;
-    let base: u32 = 2;
-    for (i, d) in diagnostics.iter().enumerate() {
-        if d < &0 {
-            epsilon += base.pow(i.try_into().unwrap());
-        }
-    }
-    epsilon
+    let gamma: u32 = mode;
+    let epsilon: u32 = !mode & 0b111111111111;
+    println!("Gamma x epsilon = {}", gamma * epsilon);
 }
 
 fn read_lines<P>(filename: P) -> io::Lines<io::BufReader<File>>
