@@ -5,7 +5,7 @@ use std::path::Path;
 #[derive(Debug)]
 struct Board {
     numbers: Vec<Vec<u32>>,
-    picked: Vec<Vec<bool>>,
+    marked: Vec<Vec<bool>>,
     won: bool
 }
 
@@ -13,17 +13,18 @@ impl Board {
     fn create(numbers: Vec<Vec<u32>>) -> Board {
         Board {
             numbers: numbers,
-            picked: vec![vec![false; 5]; 5],
+            marked: vec![vec![false; 5]; 5],
             won: false
         }
     }
 
-    fn pick_number(&mut self, number: &u32) {
-        for row in 0..5 {
+    fn mark_number(&mut self, number: &u32) {
+        'outer: for row in 0..5 {
             for col in 0..5 {
                 if self.numbers[row][col] == *number {
-                    self.picked[row][col] = true;
+                    self.marked[row][col] = true;
                     self.won = self.has_won(row, col);
+                    break 'outer;
                 }
             }
         }
@@ -32,17 +33,29 @@ impl Board {
     fn has_won(&self, row: usize, col: usize) -> bool {
         let mut row_count: u32 = 0;
         for c in 0..5 {
-            if self.picked[row][c] {
+            if self.marked[row][c] {
                 row_count += 1;
             }
         }
         let mut col_count: u32 = 0;
         for r in 0..5 {
-            if self.picked[r][col] {
+            if self.marked[r][col] {
                 col_count += 1;
             }
         }
         return (row_count == 5) || (col_count == 5);
+    }
+
+    fn unmarked_sum(&self) -> u32 {
+        let mut sum: u32 = 0;
+        for row in 0..5 {
+            for col in 0..5 {
+                if !self.marked[row][col] {
+                    sum += self.numbers[row][col];
+                }
+            }
+        }
+        return sum;
     }
 }
 
@@ -50,14 +63,14 @@ fn main() {
     let lines = read_lines("./input.txt");
     let mut line_number: u32 = 0;
 
-    let mut pick_numbers: Vec<u32> = Vec::new();
+    let mut drawn_numbers: Vec<u32> = Vec::new();
     let mut board_numbers: Vec<Vec<u32>> = Vec::with_capacity(5);
     let mut boards: Vec<Board> = Vec::new();
 
     for line in lines {
         if let Ok(line_text) = line {
             if line_number == 0 {
-                parse_pick_numbers(&line_text, &mut pick_numbers);
+                parse_drawn_numbers(&line_text, &mut drawn_numbers);
             } else if line_text == "" {
                 continue;
             } else {
@@ -73,27 +86,24 @@ fn main() {
         line_number += 1;
     }
 
-    let mut winning_board: Option<usize> = None;
-    'outer: for n in pick_numbers {
-        println!("Number {}...", n);
+    'outer: for n in drawn_numbers {
+        println!("Drawing number {}...", n);
         for i in 0..boards.len() {
             let board = &mut boards[i];
-            board.pick_number(&n);
+            board.mark_number(&n);
             if board.won {
-                winning_board = Some(i);
+                println!("Final score: {}", board.unmarked_sum() * n);
+                println!("{:?}", board);
                 break 'outer;
             }
         }
     }
-    if let Some(b) = winning_board {
-        println!("{:?}", boards[b]);
-    }
 }
 
-fn parse_pick_numbers(line_text: &str, pick_numbers: &mut Vec<u32>) {
-    let pick_numbers_str: Vec<&str> = line_text.split(",").collect::<Vec<&str>>();
-    for p in pick_numbers_str {
-        pick_numbers.push(p.trim().parse().unwrap());
+fn parse_drawn_numbers(line_text: &str, drawn_numbers: &mut Vec<u32>) {
+    let drawn_numbers_str: Vec<&str> = line_text.split(",").collect::<Vec<&str>>();
+    for p in drawn_numbers_str {
+        drawn_numbers.push(p.trim().parse().unwrap());
     }
 }
 
