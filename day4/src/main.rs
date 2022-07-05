@@ -6,7 +6,8 @@ use std::path::Path;
 struct Board {
     numbers: Vec<Vec<u32>>,
     marked: Vec<Vec<bool>>,
-    won: bool
+    won: bool,
+    winning_number: Option<u32>
 }
 
 impl Board {
@@ -14,7 +15,8 @@ impl Board {
         Board {
             numbers: numbers,
             marked: vec![vec![false; 5]; 5],
-            won: false
+            won: false,
+            winning_number: None
         }
     }
 
@@ -24,6 +26,7 @@ impl Board {
                 if self.numbers[row][col] == *number {
                     self.marked[row][col] = true;
                     self.won = self.has_won(row, col);
+                    self.winning_number = Some(*number);
                     break 'outer;
                 }
             }
@@ -57,6 +60,13 @@ impl Board {
         }
         return sum;
     }
+
+    fn final_score(&self) -> u32 {
+        if let Some(n) = self.winning_number {
+            return self.unmarked_sum() * n;
+        }
+        return 0;
+    }
 }
 
 fn main() {
@@ -67,6 +77,7 @@ fn main() {
     let mut board_numbers: Vec<Vec<u32>> = Vec::with_capacity(5);
     let mut boards: Vec<Board> = Vec::new();
 
+    // load the boards
     for line in lines {
         if let Ok(line_text) = line {
             if line_number == 0 {
@@ -86,18 +97,30 @@ fn main() {
         line_number += 1;
     }
 
-    'outer: for n in drawn_numbers {
+    // draw numbers and determine board win order
+    let mut board_win_order: Vec<usize> = Vec::with_capacity(boards.len());
+    for n in drawn_numbers {
         println!("Drawing number {}...", n);
         for i in 0..boards.len() {
             let board = &mut boards[i];
+            if board.won {
+                continue;
+            }
             board.mark_number(&n);
             if board.won {
-                println!("Final score: {}", board.unmarked_sum() * n);
-                println!("{:?}", board);
-                break 'outer;
+                board_win_order.push(i);
             }
         }
     }
+
+    // output final scores
+    let first_win_board: &Board = &boards[board_win_order[0]];
+    let last_win_board: &Board = &boards[board_win_order[boards.len()-1]];
+
+    println!("First-to-win board score: {}", first_win_board.final_score());
+    println!("{:?}", first_win_board);
+    println!("First-to-win board score: {}", last_win_board.final_score());
+    println!("{:?}", last_win_board);
 }
 
 fn parse_drawn_numbers(line_text: &str, drawn_numbers: &mut Vec<u32>) {
