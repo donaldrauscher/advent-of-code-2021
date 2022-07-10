@@ -1,13 +1,14 @@
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use num_iter::range_step_inclusive;
 
 #[derive(Debug)]
 struct Vent {
-    x1: usize,
-    y1: usize,
-    x2: usize,
-    y2: usize
+    x1: isize,
+    y1: isize,
+    x2: isize,
+    y2: isize
 }
 
 #[derive(Debug)]
@@ -19,10 +20,10 @@ impl Vent {
     fn parse(input: String) -> Vent {
         let points = input.split(" -> ").collect::<Vec<&str>>();
 
-        let mut x1: usize = 0;
-        let mut y1: usize = 0;
-        let mut x2: usize = 0;
-        let mut y2: usize = 0;
+        let mut x1: isize = 0;
+        let mut y1: isize = 0;
+        let mut x2: isize = 0;
+        let mut y2: isize = 0;
 
         let mut split = points[0].splitn(2, ",");
         if let Some(num) = split.next() {
@@ -52,28 +53,27 @@ impl Vent {
         return (self.x1 == self.x2) | (self.y1 == self.y2);
     }
 
-    fn update_range(&self) -> (usize, usize, usize, usize) {
-        let xstart;
-        let xend;
-        let ystart;
-        let yend;
+    fn is_diagonal(&self) -> bool {
+        return (self.x1 as i32 - self.x2 as i32).abs() == (self.y1 as i32 - self.y2 as i32).abs();
+    }
 
-        if self.x1 <= self.x2 {
-            xstart = self.x1;
-            xend = self.x2 + 1;
-        } else {
-            xstart = self.x2;
-            xend = self.x1 + 1;
+    fn get_update_range(&self) -> Vec<(isize, isize)> {
+        let mut update_range: Vec<(isize, isize)> = Vec::new();
+        if self.is_horizontal_or_vertical() {
+            for x in range_step_inclusive(self.x1, self.x2, if self.x1 <= self.x2 { 1 } else { -1 }) {
+                for y in range_step_inclusive(self.y1, self.y2, if self.y1 <= self.y2 { 1 } else { -1 }) {
+                    update_range.push((x, y));
+                }
+            }
+        } else if self.is_diagonal() {
+            let xrange = range_step_inclusive(self.x1, self.x2, if self.x1 <= self.x2 { 1 } else { -1 });
+            let yrange = range_step_inclusive(self.y1, self.y2, if self.y1 <= self.y2 { 1 } else { -1 });
+            let it = xrange.zip(yrange);
+            for (x, y) in it {
+                update_range.push((x, y));
+            }
         }
-        if self.y1 <= self.y2 {
-            ystart = self.y1;
-            yend = self.y2 + 1;
-        } else {
-            ystart = self.y2;
-            yend = self.y1 + 1;
-        }
-
-        return (xstart, xend, ystart, yend);
+        return update_range;
     }
 }
 
@@ -85,13 +85,11 @@ impl Diagram {
     }
 
     fn update(&mut self, vent: &Vent) {
-        if vent.is_horizontal_or_vertical() {
-            let (xstart, xend, ystart, yend) = vent.update_range();
-            for x in xstart..xend {
-                for y in ystart..yend {
-                    self.points[x][y] += 1;
-                }
-            }
+        let update_range: Vec<(isize, isize)> = vent.get_update_range();
+        for (x, y) in update_range {
+            let x: usize = x.try_into().unwrap();
+            let y: usize = y.try_into().unwrap();
+            self.points[x][y] += 1;
         }
     }
 
