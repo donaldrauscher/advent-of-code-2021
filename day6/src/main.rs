@@ -1,39 +1,36 @@
 use std::fs;
 
-#[derive(Debug)]
-struct Lanternfish {
-    timer: u32
-}
-
-impl Lanternfish {
-    fn age(&mut self) -> Option<Lanternfish> {
-        if self.timer == 0 {
-            self.timer = 6;
-            return Some(Lanternfish {
-                timer: 8
-            })
-        } else {
-            self.timer -= 1;
-            return None
-        }
-    }
-}
-
 fn main() {
-    let mut lanternfish: Vec<Lanternfish> = fs::read_to_string("input.txt")
+    let lanternfish_initial: Vec<usize> = fs::read_to_string("input.txt")
         .expect("Unable to read file")
         .trim()
         .split(',')
-        .map(|x| Lanternfish{ timer: x.parse::<u32>().unwrap() })
+        .map(|x| x.parse::<usize>().unwrap())
         .collect();
 
-    for _ in 0..80 {
-        for i in 0..lanternfish.len() {
-            if let Some(new_fish) = lanternfish[i].age() {
-                lanternfish.push(new_fish);
-            }
+    let mut lanternfish: Vec<u64> = vec![0; 9];
+    for l in lanternfish_initial {
+        lanternfish[l] += 1;
+    }
+
+    for day in 0..256 {
+        let birth = lanternfish.remove(0);
+        lanternfish.resize(9, 0);
+        lanternfish[8] = birth;
+        lanternfish[6] += birth;
+
+        if day == 79 {
+            population_update(&lanternfish);
         }
     }
 
-    println!("Number of lanternfish: {}", lanternfish.len());
+    population_update(&lanternfish);
+}
+
+fn population_update(v: &[u64]) {
+    let mut sum: u64 = 0;
+    for vv in v {
+        sum += vv;
+    }
+    println!("Number of lanternfish: {}", sum);
 }
