@@ -1,36 +1,22 @@
 use std::fs;
 
 fn main() {
-    let lanternfish_initial: Vec<usize> = fs::read_to_string("input.txt")
+    let mut lanternfish: [u64; 9] = fs::read_to_string("input.txt")
         .expect("Unable to read file")
         .trim()
         .split(',')
         .map(|x| x.parse::<usize>().unwrap())
-        .collect();
-
-    let mut lanternfish: Vec<u64> = vec![0; 9];
-    for l in lanternfish_initial {
-        lanternfish[l] += 1;
-    }
+        .fold([0; 9], |mut map, n| {
+            map[n] += 1;
+            map
+        });
 
     for day in 0..256 {
-        let birth = lanternfish.remove(0);
-        lanternfish.resize(9, 0);
-        lanternfish[8] = birth;
-        lanternfish[6] += birth;
-
+        lanternfish[(day + 7) % 9] += lanternfish[day % 9];
         if day == 79 {
-            population_update(&lanternfish);
+            println!("Number of lanternfish on day {}: {}", day + 1, lanternfish.iter().sum::<u64>());
         }
     }
 
-    population_update(&lanternfish);
-}
-
-fn population_update(v: &[u64]) {
-    let mut sum: u64 = 0;
-    for vv in v {
-        sum += vv;
-    }
-    println!("Number of lanternfish: {}", sum);
+    println!("Number of lanternfish on day 256: {}", lanternfish.iter().sum::<u64>());
 }
