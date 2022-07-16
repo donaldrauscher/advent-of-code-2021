@@ -78,71 +78,65 @@ fn main() {
 }
 
 fn decode(digits: &str, output: &str) -> u32{
-    let mut digits_vec: Vec<Digit> = digits
+    let digits_vec: Vec<Digit> = digits
         .split(' ')
         .map(|d| Digit::new(d))
         .collect::<Vec<Digit>>();
 
     let mut decoder: HashMap<Digit, u32> = HashMap::new();
-    let mut encoder: HashMap<u32, Digit> = HashMap::new();
 
     // first pass: identify 1, 4, 7, and 8 (unique length)
-    let mut idx: usize = 0;
-    'outer: while idx < digits_vec.len() {
-        let d = &digits_vec[idx];
-        for (l, n) in vec![(2,1), (3,7), (4,4), (7,8)] {
-            if d.size() == l {
-                decoder.insert(d.clone(), n);
-                encoder.insert(n, d.clone());
-                digits_vec.remove(idx);
-                continue 'outer;
-            }
-        }
-        idx = idx + 1;
-    }
+    let first_pass = digits_vec
+        .iter()
+        .filter(|&d| [2,3,4,7].iter().any(|l| d.size() == *l))
+        .map(|d| {
+            (d, match d.size() {
+                2 => 1,
+                3 => 7,
+                4 => 4,
+                7 => 8,
+                _ => unreachable!()
+            })
+        });
 
-    // second pass:
-    // - identify 2 and 9 (intersect with 4)
-    // - identify 0 and 6 (length + intersect with 1)
-    let mut idx: usize = 0;
-    'outer2: while idx < digits_vec.len() {
-        let d = &digits_vec[idx];
-        for (l, n) in vec![(2,2), (4,9)] {
-            if d.intersection_size(&encoder[&4]) == l {
-                decoder.insert(d.clone(), n);
-                encoder.insert(n, d.clone());
-                digits_vec.remove(idx);
-                continue 'outer2;
-            }
+    let mut four: Option<Digit> = None;
+    let mut one: Option<Digit> = None;
+    for (d, n) in first_pass {
+        decoder.insert(d.clone(), n);
+        if n == 4 {
+            four = Some(d.clone());
+        } else if n == 1 {
+            one = Some(d.clone());
         }
-        for (l, n) in vec![(2,0), (1,6)] {
-            if d.size() == 6 && d.intersection_size(&encoder[&1]) == l {
-                decoder.insert(d.clone(), n);
-                encoder.insert(n, d.clone());
-                digits_vec.remove(idx);
-                continue 'outer2;
-            }
-        }
-        idx = idx + 1;
     }
+    let four = four.unwrap();
+    let one = one.unwrap();
 
-    // third pass: identify 3 and 5 (intersect with 7)
-    let mut idx: usize = 0;
-    'outer3: while idx < digits_vec.len() {
-        let d = &digits_vec[idx];
-        for (l, n) in vec![(3,3), (2,5)] {
-            if d.intersection_size(&encoder[&7]) == l {
-                decoder.insert(d.clone(), n);
-                encoder.insert(n, d.clone());
-                digits_vec.remove(idx);
-                continue 'outer3;
-            }
-        }
-        idx = idx + 1;
+    // second pass: identify remaining numbers
+    let second_pass = digits_vec
+        .iter()
+        .filter(|&d| ![2,3,4,7].iter().any(|l| d.size() == *l))
+        .map(|d| {
+            (d, match (
+                d.size(),
+                d.intersection_size(&four),
+                d.intersection_size(&one)
+            ) {
+                (6, 3, 2) => 0,
+                (5, 2, 1) => 2,
+                (5, 3, 2) => 3,
+                (5, 3, 1) => 5,
+                (6, 3, 1) => 6,
+                (6, 4, 2) => 9,
+                _ => unreachable!()
+            })
+        });
+
+    for (d, n) in second_pass {
+        decoder.insert(d.clone(), n);
     }
 
     // solution
-    assert_eq!(digits_vec.len(), 0);
     return output
         .split(' ')
         .rev()
