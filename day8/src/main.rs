@@ -83,58 +83,42 @@ fn decode(digits: &str, output: &str) -> u32{
         .map(|d| Digit::new(d))
         .collect::<Vec<Digit>>();
 
-    let mut decoder: HashMap<Digit, u32> = HashMap::new();
-
-    // first pass: identify 1, 4, 7, and 8 (unique length)
-    let first_pass = digits_vec
+    // identify 1 and 4
+    let four: &Digit = digits_vec
         .iter()
-        .filter(|&d| [2,3,4,7].iter().any(|l| d.size() == *l))
-        .map(|d| {
-            (d, match d.size() {
-                2 => 1,
-                3 => 7,
-                4 => 4,
-                7 => 8,
-                _ => unreachable!()
-            })
-        });
+        .filter(|&d| d.size() == 4)
+        .next()
+        .unwrap();
 
-    let mut four: Option<Digit> = None;
-    let mut one: Option<Digit> = None;
-    for (d, n) in first_pass {
-        decoder.insert(d.clone(), n);
-        if n == 4 {
-            four = Some(d.clone());
-        } else if n == 1 {
-            one = Some(d.clone());
-        }
-    }
-    let four = four.unwrap();
-    let one = one.unwrap();
-
-    // second pass: identify remaining numbers
-    let second_pass = digits_vec
+    let one: &Digit = digits_vec
         .iter()
-        .filter(|&d| ![2,3,4,7].iter().any(|l| d.size() == *l))
+        .filter(|&d| d.size() == 2)
+        .next()
+        .unwrap();
+
+    // construct decoder
+    let decoder: HashMap<Digit, u32> = digits_vec
+        .iter()
         .map(|d| {
-            (d, match (
+            (d.clone(), match (
                 d.size(),
                 d.intersection_size(&four),
                 d.intersection_size(&one)
             ) {
                 (6, 3, 2) => 0,
+                (2, _, _) => 1,
                 (5, 2, 1) => 2,
                 (5, 3, 2) => 3,
+                (4, _, _) => 4,
                 (5, 3, 1) => 5,
                 (6, 3, 1) => 6,
+                (3, _, _) => 7,
+                (7, _, _) => 8,
                 (6, 4, 2) => 9,
                 _ => unreachable!()
             })
-        });
-
-    for (d, n) in second_pass {
-        decoder.insert(d.clone(), n);
-    }
+        })
+        .collect::<HashMap<Digit, u32>>();
 
     // solution
     return output
