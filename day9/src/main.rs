@@ -1,11 +1,44 @@
 use std::collections::HashSet;
 
-#[derive(Debug, Hash, Eq, PartialEq)]
+struct HeightMap {
+    heights: Vec<Vec<usize>>,
+    n_rows: usize,
+    n_cols: usize
+}
+
+impl HeightMap {
+    fn new(heights: Vec<Vec<usize>>) -> Self {
+        let n_rows = heights.len();
+        let n_cols = heights.iter().next().unwrap().len();
+        HeightMap {
+            heights: heights,
+            n_rows: n_rows,
+            n_cols: n_cols
+        }
+    }
+
+    fn get_height(&self, c: &Coord) -> usize {
+        return self.heights[c.x][c.y];
+    }
+
+    fn low_point(&self, c: &Coord) -> usize {
+        let row_start = if c.x == 0 { 0 } else { c.x - 1 };
+        let row_end = if c.x == (self.n_rows - 1) { c.x } else { c.x + 1 };
+        let col_start = if c.y == 0 { 0 } else { c.y - 1 };
+        let col_end = if c.y == (self.n_cols - 1) { c.y } else { c.y + 1 };
+
+        return *self.heights[row_start..=row_end]
+            .into_iter()
+            .map(|r| r[col_start..=col_end].into_iter().min().unwrap())
+            .min()
+            .unwrap();
+    }
+}
+
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
 struct Coord {
     x: usize,
-    y: usize,
-    max_x: usize,
-    max_y: usize
+    y: usize
 }
 
 enum Direction {
@@ -16,7 +49,7 @@ enum Direction {
 }
 
 impl Coord {
-    fn shift(&self, dir: Direction) -> Option<Self> {
+    fn shift(&self, dir: Direction, hmap: &HeightMap) -> Option<Self> {
         match dir {
             Direction::LEFT => {
                 if self.x == 0 {
@@ -24,21 +57,17 @@ impl Coord {
                 } else {
                     return Some(Coord {
                         x: self.x.checked_sub(1).unwrap(),
-                        y: self.y,
-                        max_x: self.max_x,
-                        max_y: self.max_y
+                        y: self.y
                     });
                 }
             },
             Direction::RIGHT => {
-                if self.x == self.max_x {
+                if self.x == (hmap.n_rows - 1) {
                     return None;
                 } else {
                     return Some(Coord {
                         x: self.x + 1,
-                        y: self.y,
-                        max_x: self.max_x,
-                        max_y: self.max_y
+                        y: self.y
                     });
                 }
             },
@@ -48,34 +77,26 @@ impl Coord {
                 } else {
                     return Some(Coord {
                         x: self.x,
-                        y: self.y.checked_sub(1).unwrap(),
-                        max_x: self.max_x,
-                        max_y: self.max_y
+                        y: self.y.checked_sub(1).unwrap()
                     });
                 }
             },
             Direction::UP => {
-                if self.y == self.max_y {
+                if self.y == (hmap.n_cols - 1) {
                     return None;
                 } else {
                     return Some(Coord {
                         x: self.x,
-                        y: self.y + 1,
-                        max_x: self.max_x,
-                        max_y: self.max_y
+                        y: self.y + 1
                     });
                 }
             }
         }
     }
-
-    fn get_height(&self, height_map: &Vec<Vec<usize>>) -> usize {
-        return height_map[self.x][self.y];
-    }
 }
 
 fn main() {
-    let height_map = include_str!("../input_sample.txt")
+    let hmap_raw = include_str!("../input.txt")
         .lines()
         .map(|row| {
             row
@@ -86,73 +107,62 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    let n_rows = height_map.len();
-    let n_cols = height_map.iter().next().unwrap().len();
+    let hmap = HeightMap::new(hmap_raw);
 
-    let risk_level =(0..n_rows)
-        .into_iter()
-        .map(|r| {
-            (0..n_cols)
-                .into_iter()
-                .map(|c| {
-                    let lp = low_point(r, c, &height_map);
-                    if lp == height_map[r][c] {
-                        let bs = basin_size(r, c, &height_map);
-                        println!("({}, {}): {}", r, c, bs);
-                        bs
-                    } else {
-                        0
-                    }
-                })
-                .sum::<usize>()
+    let risk_level =(0..(hmap.n_rows * hmap.n_cols))
+        .map(|i| {
+            let c = Coord {
+                x: i / hmap.n_cols,
+                y: i % hmap.n_cols
+            };
+            if hmap.low_point(&c) == hmap.get_height(&c) {
+                hmap.get_height(&c) + 1
+            } else {
+                0
+            }
         })
         .sum::<usize>();
 
+    let mut basin_sizes: Vec<usize> = (0..(hmap.n_rows * hmap.n_cols))
+        .filter_map(|i| {
+            let c = Coord {
+                x: i / hmap.n_cols,
+                y: i % hmap.n_cols
+            };
+            if hmap.low_point(&c) == hmap.get_height(&c) {
+                Some(basin_size(&c, &hmap))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<usize>>();
+
+    basin_sizes.sort_by(|a, b| b.cmp(a));
+    let top_3_basin_product = basin_sizes
+        .iter()
+        .take(3)
+        .fold(1, |prod, x| prod * x);
+
     println!("Total risk level: {}", risk_level);
+    println!("Top 3 basin product: {}", top_3_basin_product);
 }
 
-fn low_point(r: usize, c: usize, height_map: &Vec<Vec<usize>>) -> usize {
-    let n_rows = height_map.len();
-    let n_cols = height_map.iter().next().unwrap().len();
-
-    let row_start = if r == 0 { 0 } else { r - 1 };
-    let row_end = if r == (n_rows - 1) { r } else { r + 1 };
-    let col_start = if c == 0 { 0 } else { c - 1 };
-    let col_end = if c == (n_cols - 1) { c } else { c + 1 };
-
-    let low_point = height_map[row_start..=row_end]
-        .into_iter()
-        .map(|r| r[col_start..=col_end].into_iter().min().unwrap())
-        .min()
-        .unwrap();
-
-    return *low_point;
-}
-
-fn basin_size(r: usize, c: usize, height_map: &Vec<Vec<usize>>) -> usize {
-    let n_rows = height_map.len();
-    let n_cols = height_map.iter().next().unwrap().len();
-
+fn basin_size(c: &Coord, hmap: &HeightMap) -> usize {
     let mut points: Vec<Coord> = Vec::new();
-    points.push(Coord{
-        x: r,
-        y: c,
-        max_x: n_rows - 1,
-        max_y: n_cols - 1
-    });
+    points.push(c.clone());
 
     let mut basin_size: usize = 0;
     let mut visited: HashSet<Coord> = HashSet::new();
 
     while points.len() > 0 {
         let c = points.pop().unwrap();
-        if (c.get_height(height_map) == 9) || visited.contains(&c) {
+        if (hmap.get_height(&c) == 9) || visited.contains(&c) {
             continue;
         }
 
         for d in vec![Direction::LEFT, Direction::RIGHT, Direction::UP, Direction::DOWN] {
-            if let Some(new_c) = c.shift(d) {
-                if (new_c.get_height(height_map) > c.get_height(height_map)) && !visited.contains(&new_c) {
+            if let Some(new_c) = c.shift(d, hmap) {
+                if (hmap.get_height(&new_c) > hmap.get_height(&c)) && !visited.contains(&new_c) {
                     points.push(new_c);
                 }
             }
