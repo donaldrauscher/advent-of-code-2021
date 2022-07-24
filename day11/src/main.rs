@@ -95,15 +95,27 @@ fn main() {
     println!("Initial:");
     print_state(&energy_levels);
 
-    let mut num_flashed = 0;
-    for _ in 0..100 {
-        num_flashed += step(&mut energy_levels);
+    let mut num_flashes = 0;
+    let mut num_step = 0;
+    let mut stop: bool = false;
+    while !stop {
+        num_flashes += step(&mut energy_levels);
+        num_step += 1;
+
+        let energy_sum = energy_levels.iter().sum::<usize>();
+        if energy_sum == 0 {
+            stop = true;
+        }
+
+        if num_step == 100 {
+            println!("After 100 flashes:");
+            print_state(&energy_levels);
+            println!("Number of flashes: {}", num_flashes);
+        }
     }
 
-    println!("After 100 flashes:");
+    println!("After {} flashes:", num_step);
     print_state(&energy_levels);
-
-    println!("Number of flashes: {}", num_flashed);
 }
 
 fn step(energy_levels: &mut Vec<usize>) -> usize {
