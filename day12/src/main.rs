@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 struct Node {
@@ -24,25 +24,37 @@ impl Node {
 #[derive(Debug, Clone)]
 struct Path {
     path: Vec<usize>,
-    small_visited: HashSet<usize>
+    small_visit_count: Vec<usize>
 }
 
 impl Path {
     fn new(graph: &Graph) -> Self {
         return Path {
             path: vec![graph.node_key_map["start"]],
-            small_visited: HashSet::new()
+            small_visit_count: graph.nodes.iter().map(|_| 0).collect::<Vec<usize>>()
         };
+    }
+
+    fn can_visit(&self, idx: &usize) -> bool {
+        let max_small_visit_count = self.small_visit_count
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        if max_small_visit_count < &2 {
+            return self.small_visit_count[*idx] < 2;
+        } else {
+            return self.small_visit_count[*idx] < 1;
+        }
     }
 
     fn extend(&self, graph: &Graph, idx: usize) -> Option<Self> {
         if graph.nodes[idx].start {
             return None;
         } else if graph.nodes[idx].small {
-            if !self.small_visited.contains(&idx) {
+            if self.can_visit(&idx) {
                 let mut out = self.clone();
                 out.path.push(idx);
-                out.small_visited.insert(idx);
+                out.small_visit_count[idx] += 1;
                 return Some(out);
             } else {
                 return None;
@@ -58,6 +70,7 @@ impl Path {
         return *self.path.last().unwrap();
     }
 
+    #[allow(dead_code)]
     fn print(&self, graph: &Graph) {
         let mut out = String::from("start");
         for i in &self.path[1..] {
