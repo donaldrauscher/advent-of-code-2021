@@ -17,26 +17,29 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
+    let mut fold_num = 0;
     for (d, i) in folds {
+        fold_num += 1;
         coords = coords
             .iter()
-            .map(|(mut x, mut y)| {
-                if d == "x" {
-                    if x > i {
-                        x = 2*i - x;
-                    }
-                } else {
-                    if y > i {
-                        y = 2*i - y;
-                    }
+            .filter_map(|(mut x, mut y)| {
+                match d {
+                    "x" if x > i => Some((2*i - x, y)),
+                    "x" if x == i => None,
+                    "y" if y > i => Some((x, 2*i - y)),
+                    "y" if y == i => None,
+                    _ => Some((x, y))
                 }
-                (x, y)
             })
             .collect::<Vec<_>>();
         coords.sort_unstable();
         coords.dedup();
+        if fold_num == 1 {
+            println!("Number of points after first fold: {}", coords.len());
+        }
     }
 
+    println!("{:?}", coords);
     print_sheet(&coords);
 }
 
@@ -50,14 +53,14 @@ fn print_sheet(coords: &Vec<(usize, usize)>) {
     let coords_lookup = coords
         .iter()
         .fold(vec![0; (max_x+1)*(max_y+1)], |mut lookup, (x, y)| {
-            lookup[y + x*max_y] = 1;
+            lookup[y*max_x + x] = 1;
             lookup
         });
 
     for y in 0..=max_y {
         let row: String = (0..=max_x)
             .into_iter()
-            .map(|x| if coords_lookup[y + x*max_y] > 0 { "#" } else { "." })
+            .map(|x| if coords_lookup[y*max_x + x] > 0 { "#" } else { "." })
             .collect();
         println!("{}", row);
     }
