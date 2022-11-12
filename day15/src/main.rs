@@ -13,6 +13,16 @@ impl Node {
     fn add_neighbors(&self, pq: &mut PriorityQueue<Node, isize>, risk_levels: &Vec<isize>, r: usize, c: usize) {
         let x = self.location % c;
         let y = self.location / c;
+        if x > 0 {
+            let n = y*c + x - 1;
+            let d = self.distance + risk_levels[n];
+            pq.push_increase(Node { location: n, distance: d }, -d);
+        }
+        if y > 0 {
+            let n = (y-1)*c + x;
+            let d = self.distance + risk_levels[n];
+            pq.push_increase(Node { location: n, distance: d }, -d);
+        }
         if x < (c - 1) {
             let n = y*c + x + 1;
             let d = self.distance + risk_levels[n];
@@ -54,9 +64,9 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    // insert origin
-    let origin = Node{ location: 0, distance: 0 };
+    // set up priority queue
     let mut pq = PriorityQueue::new();
+    let origin = Node{ location: 0, distance: 0 };
     pq.push(origin, 0);
 
     // run dijikstras
