@@ -78,24 +78,23 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    // // multiple board
-    // let n_row = n_row * 5;
-    // let n_col = n_col * 5;
-    // let risk_levels = (
-    //     (0..n_row*n_col*25)
-    //     .map(|l| {
-    //         let x = (l % (n_col * 5)) % 5;
-    //         let y = (l / (n_col * 5)) % 5;
-    //         risk_levels[y*n_col + x]
-    //     })
-    //     .(0..max_pos)
-    //         .map(|p| {
-    //             crabs
-    //                 .iter()
-    //                 .map(|x|{ let n = (x - p).abs(); n*(n+1)/2 })
-    //                 .sum::<i32>()
-    //         })
-    // )
+    // multiple board
+    let risk_levels: Vec<isize> = (0..n_row*n_col*25)
+        .map(|l| {
+            let x = l % (n_col * 5);
+            let y = l / (n_col * 5);
+            let xx = x % n_col;
+            let yy = y % n_row;
+            let r = risk_levels[yy*n_col + xx] + ((x / n_col) as isize) + ((y / n_row) as isize);
+            if (r % 9) == 0 {
+                return 9
+            } else {
+                return r % 9
+            }
+        })
+        .collect::<Vec<_>>();
+    let n_row = n_row * 5;
+    let n_col = n_col * 5;
 
     // set up priority queue
     let mut pq = PriorityQueue::new();
