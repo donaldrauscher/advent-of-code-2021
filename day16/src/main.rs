@@ -1,3 +1,4 @@
+use std::cmp;
 
 fn decode(c: char) -> String {
     match c {
@@ -32,13 +33,10 @@ fn bits_to_number(bits: &[u8]) -> usize {
     return out
 }
 
-fn parse(bits: &Vec<u8>, versions: &mut Vec<usize>, start: usize) -> usize {
+fn parse(bits: &Vec<u8>, start: usize) -> (usize, usize) {
     // determine packet version/type
     let packet_version = bits_to_number(&bits[start..=(start+2)]);
     let packet_type = bits_to_number(&bits[(start+3)..=(start+5)]);
-
-    // add packet version
-    versions.push(packet_version);
 
     // literal
     if packet_type == 4 {
@@ -53,28 +51,46 @@ fn parse(bits: &Vec<u8>, versions: &mut Vec<usize>, start: usize) -> usize {
             i += 5;
         }
         // println!("Literal: {:?}", bits_to_number(&lit[..]));
-        return i;
+        let output = bits_to_number(&lit[..]);
+        return (output, i);
 
     // operator
     } else {
+        let mut i = start;
+        let mut subpackets: Vec<usize> = Vec::new();
         let length_type_id = bits[start+6];
+
         // total length of subpackets
         if length_type_id == 0 {
             let subpacket_length = bits_to_number(&bits[(start+7)..=(start+21)]);
-            let mut i = start + 22;
+            let mut subpacket;
+            i += 22;
             while i < (start + subpacket_length + 22) {
-                i = parse(bits, versions, i);
+                (subpacket, i) = parse(bits, i);
+                subpackets.push(subpacket);
             }
-            return i;
         // total number of subpackages
         } else {
             let num_subpackets = bits_to_number(&bits[(start+7)..=(start+17)]);
-            let mut i = start + 18;
+            let mut subpacket;
+            i = start + 18;
             for _ in 1..=num_subpackets {
-                i = parse(bits, versions, i);
+                (subpacket, i) = parse(bits, i);
+                subpackets.push(subpacket);
             }
-            return i;
         }
+
+        let output = match packet_type {
+            0 => subpackets.iter().fold(0, |sum, s| sum + s),
+            1 => subpackets.iter().fold(1, |prod, s| prod * s),
+            2 => subpackets.iter().fold(usize::max_value(), |min, s| cmp::min(min, *s)),
+            3 => subpackets.iter().fold(0, |max, s| cmp::max(max, *s)),
+            5 => if subpackets[0] > subpackets[1] { 1 } else { 0 },
+            6 => if subpackets[0] < subpackets[1] { 1 } else { 0 },
+            7 => if subpackets[0] == subpackets[1] { 1 } else { 0 },
+            _ => todo!()
+        };
+        return (output, i);
     }
 }
 
@@ -90,7 +106,6 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    let mut versions: Vec<usize> = Vec::new();
-    parse(&bits, &mut versions, 0);
-    println!("Version Total: {}", versions.iter().fold(0, |total, v| total + v));
+    let (output, _) = parse(&bits, 0);
+    println!("Output: {}", output);
 }
